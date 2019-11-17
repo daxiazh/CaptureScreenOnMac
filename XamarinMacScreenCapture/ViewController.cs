@@ -6,6 +6,8 @@ using System.Timers;
 using ImageIO;
 using CoreServices;
 using System.IO;
+using System.Threading;
+using CoreGraphics;
 
 namespace XamarinMacScreenCapture
 {
@@ -34,18 +36,29 @@ namespace XamarinMacScreenCapture
 
         private uint mScreenDeviceId;
 
-        private NSTimer mCaptureTimer;
+        private NSTimer mUpdateTimer;
+
+        private System.Timers.Timer mCaptureTimer;
 
         partial void ClickedCaptureButton(NSObject sender)
         {
+            if (mUpdateTimer != null)
+            {
+                mUpdateTimer.Dispose();
+                return;
+            }
+
+            mMainThreadId = Thread.CurrentThread.ManagedThreadId;
             var id1 = (NSNumber)NSScreen.MainScreen.DeviceDescription["NSScreenNumber"];
             mScreenDeviceId = id1.UInt32Value;
 
-            if (mCaptureTimer != null)
-                mCaptureTimer.Dispose();
+            if (mUpdateTimer == null)
+            {
+                mUpdateTimer = NSTimer.CreateRepeatingTimer(0.3f, (timer) => CaptureInMouse());
+                NSRunLoop.Current.AddTimer(mUpdateTimer, NSRunLoopMode.Default);
+            }
 
-            mCaptureTimer = NSTimer.CreateRepeatingTimer(0.5f, (timer)=>CaptureInMouse());
-            NSRunLoop.Current.AddTimer(mCaptureTimer, NSRunLoopMode.Default);
+
         }
 
         private void MCaptureTimer_Elapsed(object sender, ElapsedEventArgs e)
@@ -54,9 +67,21 @@ namespace XamarinMacScreenCapture
         }
 
         private int mFileNameId = 0;
+        private int mMainThreadId = -1;
+
+        private CGPoint mPreCursorPos;
 
         private void CaptureInMouse()
         {
+            if((NSEvent.CurrentMouseLocation.X- mPreCursorPos.X)* (NSEvent.CurrentMouseLocation.X - mPreCursorPos.X) +
+                (NSEvent.CurrentMouseLocation.Y - mPreCursorPos.Y) * (NSEvent.CurrentMouseLocation.Y - mPreCursorPos.Y)
+                < 0.1f*0.1f)
+            {
+                return;
+            }
+
+            mPreCursorPos = NSEvent.CurrentMouseLocation;
+
             // var pos = NSEvent.CurrentMouseLocation;
             using (var cgScreenImage = ScreenCapture.CreateImage(mScreenDeviceId))
             {
@@ -75,7 +100,10 @@ namespace XamarinMacScreenCapture
                     destination.AddImage(cgScreenImage);
                     destination.Close();
                 }
-                
+
+                if (Thread.CurrentThread.ManagedThreadId != mMainThreadId)
+                    return; // 不在主线程,所以不能更新下面的界面显示
+                                
                 // var rect = new CoreGraphics.CGRect(pos.X / 1920f * 3840f, (1f - pos.Y / 1080) * 2160f, 100f / 1920.0f * 3840, 100f / 1080f * 2160f);
                 //using (var cgImage = cgScreenImage.WithImageInRect(rect))
                 var cgImage = cgScreenImage;

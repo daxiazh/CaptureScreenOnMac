@@ -27,7 +27,9 @@ namespace XamarinMacScreenCapture
                 // handle = CGDisplayCreateImage(displayId);
                 // 鼠标位置
                 var mousePos = NSEvent.CurrentMouseLocation;
-                var rect = new CoreGraphics.CGRect(mousePos.X, (1080 - mousePos.Y), 100f, 100f);
+                const float width = 100f;
+                const float height = 100f;
+                var rect = new CoreGraphics.CGRect(mousePos.X - width*0.5f, 1080 - (mousePos.Y + height*0.5f), width, height);
 
                 handle = CGDisplayCreateImageForRect(displayId, rect);
                 return new CGImage(handle);
