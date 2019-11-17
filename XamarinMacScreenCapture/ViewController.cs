@@ -3,6 +3,9 @@ using System.Drawing;
 using AppKit;
 using Foundation;
 using System.Timers;
+using ImageIO;
+using CoreServices;
+using System.IO;
 
 namespace XamarinMacScreenCapture
 {
@@ -50,11 +53,29 @@ namespace XamarinMacScreenCapture
             CaptureInMouse();
         }
 
+        private int mFileNameId = 0;
+
         private void CaptureInMouse()
         {
             // var pos = NSEvent.CurrentMouseLocation;
             using (var cgScreenImage = ScreenCapture.CreateImage(mScreenDeviceId))
             {
+                // 保存到本地
+                var fileRootPath = "/Users/match/Documents/Temp/WowMonsterNamePics/monster_name_";
+                var filePath = fileRootPath + mFileNameId + ".png";
+                while (File.Exists(filePath))
+                {
+                    mFileNameId++;
+                    filePath = fileRootPath + mFileNameId + ".png";
+                }
+
+                using (var url = new NSUrl("file", "localhost", filePath))
+                using (var destination = CGImageDestination.Create(url, "public.png", 1))
+                {
+                    destination.AddImage(cgScreenImage);
+                    destination.Close();
+                }
+                
                 // var rect = new CoreGraphics.CGRect(pos.X / 1920f * 3840f, (1f - pos.Y / 1080) * 2160f, 100f / 1920.0f * 3840, 100f / 1080f * 2160f);
                 //using (var cgImage = cgScreenImage.WithImageInRect(rect))
                 var cgImage = cgScreenImage;
